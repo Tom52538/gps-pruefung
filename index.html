@@ -446,6 +446,9 @@
             
             <!-- Camera Controls -->
             <div class="camera-controls">
+                <button id="toggleFlashlight" class="btn btn-secondary" style="margin-bottom: 10px;">
+                    💡 Licht An/Aus
+                </button>
                 <button id="captureBtn" class="btn btn-primary">📸 Foto machen</button>
                 <button id="stopCamera" class="btn btn-secondary" style="margin-top: 10px;">❌ Abbrechen</button>
                 <div id="ocrStatus" class="status info" style="display: none; margin-top: 10px;">
@@ -515,6 +518,7 @@
         let devices = JSON.parse(localStorage.getItem('gpsDevices') || '[]');
         let stream = null;
         let currentScan = { model: null, serial: null };
+        let torchEnabled = false;
         
         // Initialize Google Identity Services
         function gapiLoaded() {
@@ -729,10 +733,30 @@
         document.getElementById('startCamera').addEventListener('click', async () => {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' } 
+                    video: { 
+                        facingMode: 'environment',
+                        focusMode: 'continuous',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    } 
                 });
-                document.getElementById('video').srcObject = stream;
+                
+                const video = document.getElementById('video');
+                video.srcObject = stream;
                 document.getElementById('cameraView').classList.add('active');
+                
+                // Aktiviere Taschenlampe/Blitz wenn verfügbar
+                const track = stream.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
+                
+                if (capabilities.torch) {
+                    await track.applyConstraints({
+                        advanced: [{ torch: true }]
+                    });
+                    console.log('✅ Taschenlampe aktiviert');
+                } else {
+                    console.log('⚠️ Taschenlampe nicht verfügbar auf diesem Gerät');
+                }
             } catch (error) {
                 showStatus('Kamera Fehler: ' + error.message, 'error');
             }
@@ -740,8 +764,37 @@
         
         document.getElementById('stopCamera').addEventListener('click', () => {
             if (stream) {
+                // Schalte Taschenlampe aus
+                const track = stream.getVideoTracks()[0];
+                track.applyConstraints({
+                    advanced: [{ torch: false }]
+                }).catch(() => {}); // Ignoriere Fehler wenn nicht unterstützt
+                
                 stream.getTracks().forEach(track => track.stop());
                 document.getElementById('cameraView').classList.remove('active');
+                torchEnabled = false;
+            }
+        });
+        
+        // Toggle Flashlight
+        document.getElementById('toggleFlashlight').addEventListener('click', async () => {
+            if (stream) {
+                const track = stream.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
+                
+                if (capabilities.torch) {
+                    torchEnabled = !torchEnabled;
+                    try {
+                        await track.applyConstraints({
+                            advanced: [{ torch: torchEnabled }]
+                        });
+                        showStatus(torchEnabled ? '💡 Licht AN' : '💡 Licht AUS', 'info');
+                    } catch (error) {
+                        showStatus('Taschenlampe konnte nicht geschaltet werden', 'error');
+                    }
+                } else {
+                    showStatus('⚠️ Taschenlampe nicht verfügbar auf diesem Gerät', 'error');
+                }
             }
         });
         
