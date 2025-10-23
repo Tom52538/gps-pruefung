@@ -558,7 +558,9 @@
         function generateCSV() {
             let csv = 'Modell,Seriennummer,Zeitstempel\n';
             devices.forEach(device => {
-                csv += `${device.model},${device.serial},${device.timestamp}\n`;
+                // Escape timestamp to keep it in one cell
+                const timestamp = device.timestamp.replace(',', '');
+                csv += `${device.model},${device.serial},"${timestamp}"\n`;
             });
             return csv;
         }
