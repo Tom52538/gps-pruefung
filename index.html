@@ -913,12 +913,14 @@
                 }
             }
             
-            // Strategie 3: Suche nach 6-7 aufeinanderfolgenden Zahlen
+            // Strategie 3: NUR als letzter Ausweg - erste 6 Ziffern die NICHT Teil einer längeren Zahl sind
             if (!serial) {
-                const serialDirect = text.match(/\b(\d{6,7})\b/);
-                if (serialDirect) {
-                    serial = serialDirect[1];
-                    console.log('✓ S/N gefunden (Strategie 3 - direkt):', serial);
+                // Ignoriere Zahlen die Teil von Barcodes/längeren Sequenzen sind (z.B. 352857-00-411186)
+                // Suche nach 6 Ziffern die NICHT von einem Bindestrich oder weiteren Ziffern gefolgt werden
+                const allNumbers = text.match(/\b(\d{6})\b(?![-\d])/g);
+                if (allNumbers && allNumbers.length > 0) {
+                    serial = allNumbers[0];
+                    console.log('✓ S/N gefunden (Strategie 3 - erste isolierte 6-stellige Zahl):', serial);
                 }
             }
             
