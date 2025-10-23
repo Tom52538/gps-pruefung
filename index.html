@@ -814,11 +814,36 @@
             const canvas = document.getElementById('canvas');
             const context = canvas.getContext('2d');
             
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0);
+            // Reduziere Auflösung drastisch für schnellere Verarbeitung
+            // Labels sind gut lesbar, also reicht 640x480
+            const maxWidth = 640;
+            const maxHeight = 480;
             
-            const imageData = canvas.toDataURL('image/png');
+            let width = video.videoWidth;
+            let height = video.videoHeight;
+            
+            // Berechne neue Größe (behält Aspect Ratio)
+            if (width > height) {
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+            } else {
+                if (height > maxHeight) {
+                    width = Math.round((width * maxHeight) / height);
+                    height = maxHeight;
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            context.drawImage(video, 0, 0, width, height);
+            
+            // Komprimiere als JPEG mit mittlerer Qualität (0.6 = gut genug für OCR)
+            const imageData = canvas.toDataURL('image/jpeg', 0.6);
+            
+            console.log('📐 Bildgröße:', width, 'x', height);
+            console.log('📦 Dateigröße:', Math.round(imageData.length / 1024), 'KB');
             
             // Show OCR status
             const ocrStatus = document.getElementById('ocrStatus');
@@ -830,6 +855,8 @@
                 // Convert base64 to just the image data (remove data:image/png;base64, prefix)
                 const base64Image = imageData.split(',')[1];
                 
+                console.log('📤 Sende Bild an Cloud Function...');
+                
                 const response = await fetch(VISION_FUNCTION_URL, {
                     method: 'POST',
                     headers: {
@@ -840,11 +867,16 @@
                     })
                 });
                 
+                console.log('📥 Response Status:', response.status);
+                
                 ocrStatus.style.display = 'none';
                 
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('📥 Cloud Function Response:', data);
+                    
                     const detectedText = data.text || '';
+                    console.log('📝 Erkannter Text:', detectedText);
                     
                     if (detectedText) {
                         processOCRResult(detectedText);
@@ -853,12 +885,14 @@
                         showResult(null, null);
                     }
                 } else {
+                    const errorText = await response.text();
+                    console.error('❌ Response Error:', errorText);
                     throw new Error('OCR Fehler: ' + response.status);
                 }
             } catch (error) {
                 ocrStatus.style.display = 'none';
                 showStatus('OCR Fehler: ' + error.message, 'error');
-                console.error('OCR Error:', error);
+                console.error('❌ OCR Error:', error);
                 // Zeige Dialog für manuelle Eingabe
                 showResult(null, null);
             }
