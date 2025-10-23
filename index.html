@@ -556,11 +556,13 @@
         
         // Generate CSV
         function generateCSV() {
-            let csv = 'Modell,Seriennummer,Zeitstempel\n';
+            let csv = 'Modell,Seriennummer,Datum,Uhrzeit\n';
             devices.forEach(device => {
-                // Escape timestamp to keep it in one cell
-                const timestamp = device.timestamp.replace(',', '');
-                csv += `${device.model},${device.serial},"${timestamp}"\n`;
+                // Split timestamp into date and time
+                const parts = device.timestamp.split(' ');
+                const datum = parts[0]; // e.g. "23.10.2025"
+                const uhrzeit = parts[1]; // e.g. "11:24:49"
+                csv += `${device.model},${device.serial},${datum},${uhrzeit}\n`;
             });
             return csv;
         }
