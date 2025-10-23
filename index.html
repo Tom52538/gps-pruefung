@@ -490,25 +490,55 @@
             
             try {
                 const csvContent = generateCSV();
-                const fileName = `GPS_Scan_${new Date().toISOString().split('T')[0]}_${Date.now()}.csv`;
+                const fileName = `GPS_Scan_${new Date().toISOString().split('T')[0]}.csv`;
                 
-                const metadata = {
-                    name: fileName,
-                    mimeType: 'text/csv',
-                    parents: [GOOGLE_FOLDER_ID]
-                };
+                // Check if file already exists for today
+                const searchResponse = await fetch(
+                    `https://www.googleapis.com/drive/v3/files?q=name='${fileName}' and '${GOOGLE_FOLDER_ID}' in parents and trashed=false`,
+                    {
+                        headers: {
+                            'Authorization': 'Bearer ' + accessToken
+                        }
+                    }
+                );
                 
-                const form = new FormData();
-                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-                form.append('file', new Blob([csvContent], { type: 'text/csv' }));
+                const searchData = await searchResponse.json();
+                let response;
                 
-                const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Bearer ' + accessToken
-                    },
-                    body: form
-                });
+                if (searchData.files && searchData.files.length > 0) {
+                    // File exists, update it
+                    const fileId = searchData.files[0].id;
+                    response = await fetch(
+                        `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+                        {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': 'Bearer ' + accessToken,
+                                'Content-Type': 'text/csv'
+                            },
+                            body: csvContent
+                        }
+                    );
+                } else {
+                    // File doesn't exist, create new
+                    const metadata = {
+                        name: fileName,
+                        mimeType: 'text/csv',
+                        parents: [GOOGLE_FOLDER_ID]
+                    };
+                    
+                    const form = new FormData();
+                    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                    form.append('file', new Blob([csvContent], { type: 'text/csv' }));
+                    
+                    response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + accessToken
+                        },
+                        body: form
+                    });
+                }
                 
                 if (response.ok) {
                     showStatus('✅ In Google Drive hochgeladen!', 'success');
