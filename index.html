@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GPS Erfassung</title>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * {
@@ -509,6 +508,9 @@
         ];
         const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
         
+        // Google Vision API Configuration
+        const VISION_API_KEY = 'AIzaSyCqZyQ8VfbvbpO9VcKbyl4XFVgH8CZmQLo'; // Muss in Google Cloud Console erstellt werden
+        
         let tokenClient;
         let accessToken = null;
         let gapiInited = false;
@@ -809,32 +811,58 @@
             
             const imageData = canvas.toDataURL('image/png');
             
-            // Stop camera
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                document.getElementById('cameraView').classList.remove('active');
-            }
-            
             // Show OCR status
             const ocrStatus = document.getElementById('ocrStatus');
             ocrStatus.style.display = 'block';
             ocrStatus.textContent = '🔍 Erkenne Text...';
             
-            // Perform OCR
+            // Perform OCR with Google Vision API
             try {
-                const result = await Tesseract.recognize(imageData, 'eng', {
-                    logger: m => {
-                        if (m.status === 'recognizing text') {
-                            ocrStatus.textContent = `🔍 Erkenne Text... ${Math.round(m.progress * 100)}%`;
-                        }
+                // Convert base64 to just the image data (remove data:image/png;base64, prefix)
+                const base64Image = imageData.split(',')[1];
+                
+                const visionResponse = await fetch(
+                    `https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            requests: [{
+                                image: {
+                                    content: base64Image
+                                },
+                                features: [{
+                                    type: 'TEXT_DETECTION',
+                                    maxResults: 1
+                                }]
+                            }]
+                        })
                     }
-                });
+                );
                 
                 ocrStatus.style.display = 'none';
-                processOCRResult(result.data.text);
+                
+                if (visionResponse.ok) {
+                    const visionData = await visionResponse.json();
+                    const detectedText = visionData.responses[0]?.textAnnotations?.[0]?.description || '';
+                    
+                    if (detectedText) {
+                        processOCRResult(detectedText);
+                    } else {
+                        showStatus('❌ Kein Text erkannt. Bitte erneut versuchen.', 'error');
+                        showResult(null, null);
+                    }
+                } else {
+                    throw new Error('Vision API Fehler: ' + visionResponse.status);
+                }
             } catch (error) {
                 ocrStatus.style.display = 'none';
                 showStatus('OCR Fehler: ' + error.message, 'error');
+                console.error('Vision API Error:', error);
+                // Zeige Dialog für manuelle Eingabe
+                showResult(null, null);
             }
         });
         
