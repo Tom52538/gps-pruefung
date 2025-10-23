@@ -743,7 +743,9 @@
         });
         
         function processOCRResult(text) {
-            console.log('OCR Text:', text);
+            console.log('=== OCR ROHDATEN ===');
+            console.log(text);
+            console.log('====================');
             
             // Extract model - flexibel für alle Formate nach "Model:"
             // Sucht nach: Model: [BUCHSTABEN][ZAHLEN]-[ZAHLEN]
@@ -754,6 +756,7 @@
             const modelAfterLabel = text.match(/Model[:\s]+([A-Z]{2}\d{3}-\d{1,2})/i);
             if (modelAfterLabel) {
                 model = modelAfterLabel[1].toUpperCase();
+                console.log('✓ Modell gefunden (nach Label):', model);
             }
             
             // Variante 2: Direkte Suche nach Modellmuster (falls "Model:" nicht erkannt)
@@ -761,7 +764,12 @@
                 const modelDirect = text.match(/\b([A-Z]{2}\d{3}-\d{1,2})\b/i);
                 if (modelDirect) {
                     model = modelDirect[1].toUpperCase();
+                    console.log('✓ Modell gefunden (direkt):', model);
                 }
+            }
+            
+            if (!model) {
+                console.log('✗ Kein Modell gefunden');
             }
             
             // Extract serial number - flexibel für verschiedene Längen
@@ -772,6 +780,7 @@
             const serialAfterLabel = text.match(/S[\/\.\s]*N[:\s]+(\d{6,7})/i);
             if (serialAfterLabel) {
                 serial = serialAfterLabel[1];
+                console.log('✓ S/N gefunden (nach Label):', serial);
             }
             
             // Variante 2: Suche nach 6-7 aufeinanderfolgenden Zahlen
@@ -779,12 +788,24 @@
                 const serialDirect = text.match(/\b(\d{6,7})\b/);
                 if (serialDirect) {
                     serial = serialDirect[1];
+                    console.log('✓ S/N gefunden (direkt):', serial);
                 }
             }
             
-            // Zeige Ergebnis auch wenn nur eins gefunden wurde
-            currentScan = { model, serial };
-            showResult(model, serial);
+            if (!serial) {
+                console.log('✗ Keine S/N gefunden');
+            }
+            
+            // Zeige Ergebnis nur wenn mindestens ein Wert gefunden wurde
+            if (model || serial) {
+                currentScan = { model, serial };
+                showResult(model, serial);
+            } else {
+                showStatus('❌ Kein Modell oder S/N erkannt. Bitte erneut versuchen oder manuell eingeben.', 'error');
+                // Zeige trotzdem den Dialog für manuelle Eingabe
+                currentScan = { model: null, serial: null };
+                showResult(null, null);
+            }
         }
         
         function showResult(model, serial) {
