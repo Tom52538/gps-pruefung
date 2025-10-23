@@ -843,24 +843,44 @@
             console.log(text);
             console.log('====================');
             
-            // Extract model - flexibel für alle Formate nach "Model:"
-            // Sucht nach: Model: [BUCHSTABEN][ZAHLEN]-[ZAHLEN]
-            // Beispiele: ME501-4, TU600-25, GO700-10, etc.
+            // Extract model - mehrere Strategien
             let model = null;
             
-            // Variante 1: Suche nach "Model:" gefolgt von Modellnummer
+            // Strategie 1: Suche nach "Model:" gefolgt von Modellnummer
             const modelAfterLabel = text.match(/Model[:\s]+([A-Z]{2}\d{3}-\d{1,2})/i);
             if (modelAfterLabel) {
                 model = modelAfterLabel[1].toUpperCase();
-                console.log('✓ Modell gefunden (nach Label):', model);
+                console.log('✓ Modell gefunden (Strategie 1 - nach Label):', model);
             }
             
-            // Variante 2: Direkte Suche nach Modellmuster (falls "Model:" nicht erkannt)
+            // Strategie 2: Suche nach Pattern am Zeilenanfang (für schlecht erkannte Labels)
+            if (!model) {
+                const lines = text.split('\n');
+                for (const line of lines) {
+                    const match = line.match(/^[^\w]*([A-Z]{2}\d{3}-\d{1,2})/i);
+                    if (match) {
+                        model = match[1].toUpperCase();
+                        console.log('✓ Modell gefunden (Strategie 2 - Zeilenanfang):', model);
+                        break;
+                    }
+                }
+            }
+            
+            // Strategie 3: Direkte Suche überall im Text
             if (!model) {
                 const modelDirect = text.match(/\b([A-Z]{2}\d{3}-\d{1,2})\b/i);
                 if (modelDirect) {
                     model = modelDirect[1].toUpperCase();
-                    console.log('✓ Modell gefunden (direkt):', model);
+                    console.log('✓ Modell gefunden (Strategie 3 - direkt):', model);
+                }
+            }
+            
+            // Strategie 4: Suche nach Pattern mit möglichen OCR-Fehlern (0/O, I/1, etc.)
+            if (!model) {
+                const relaxedPattern = text.match(/\b([A-Z]{2}[0O]\d{2}-\d{1,2})\b/i);
+                if (relaxedPattern) {
+                    model = relaxedPattern[1].toUpperCase().replace('O', '0');
+                    console.log('✓ Modell gefunden (Strategie 4 - mit Fehlerkorrektur):', model);
                 }
             }
             
@@ -868,23 +888,37 @@
                 console.log('✗ Kein Modell gefunden');
             }
             
-            // Extract serial number - flexibel für verschiedene Längen
-            // Sucht nach: S/N: [6-7 Zahlen] oder direkt nach mehreren Zahlen
+            // Extract serial number - mehrere Strategien
             let serial = null;
             
-            // Variante 1: Suche nach "S/N:" oder "S.N:" gefolgt von Zahlen
+            // Strategie 1: Suche nach "S/N:" oder "S.N:" gefolgt von Zahlen
             const serialAfterLabel = text.match(/S[\/\.\s]*N[:\s]+(\d{6,7})/i);
             if (serialAfterLabel) {
                 serial = serialAfterLabel[1];
-                console.log('✓ S/N gefunden (nach Label):', serial);
+                console.log('✓ S/N gefunden (Strategie 1 - nach Label):', serial);
             }
             
-            // Variante 2: Suche nach 6-7 aufeinanderfolgenden Zahlen
+            // Strategie 2: Suche in der Zeile nach "S/N"
+            if (!serial) {
+                const lines = text.split('\n');
+                for (const line of lines) {
+                    if (line.match(/S[\/\.\s]*N/i)) {
+                        const match = line.match(/(\d{6,7})/);
+                        if (match) {
+                            serial = match[1];
+                            console.log('✓ S/N gefunden (Strategie 2 - in S/N Zeile):', serial);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Strategie 3: Suche nach 6-7 aufeinanderfolgenden Zahlen
             if (!serial) {
                 const serialDirect = text.match(/\b(\d{6,7})\b/);
                 if (serialDirect) {
                     serial = serialDirect[1];
-                    console.log('✓ S/N gefunden (direkt):', serial);
+                    console.log('✓ S/N gefunden (Strategie 3 - direkt):', serial);
                 }
             }
             
@@ -892,7 +926,7 @@
                 console.log('✗ Keine S/N gefunden');
             }
             
-            // Zeige Ergebnis nur wenn mindestens ein Wert gefunden wurde
+            // Zeige Ergebnis auch wenn nur eins gefunden wurde
             if (model || serial) {
                 currentScan = { model, serial };
                 showResult(model, serial);
