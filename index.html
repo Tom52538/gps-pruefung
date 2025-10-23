@@ -508,8 +508,8 @@
         ];
         const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
         
-        // Google Vision API Configuration
-        const VISION_API_KEY = 'YOUR_VISION_API_KEY_HERE'; // Muss in Google Cloud Console erstellt werden
+        // Vision OCR Cloud Function URL (sicher, kein API Key im Frontend!)
+        const VISION_FUNCTION_URL = 'https://europe-west1-gen-lang-client-0273548609.cloudfunctions.net/visionOCR';
         
         let tokenClient;
         let accessToken = null;
@@ -825,37 +825,26 @@
             ocrStatus.style.display = 'block';
             ocrStatus.textContent = '🔍 Erkenne Text...';
             
-            // Perform OCR with Google Vision API
+            // Perform OCR with Cloud Function (secure!)
             try {
                 // Convert base64 to just the image data (remove data:image/png;base64, prefix)
                 const base64Image = imageData.split(',')[1];
                 
-                const visionResponse = await fetch(
-                    `https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            requests: [{
-                                image: {
-                                    content: base64Image
-                                },
-                                features: [{
-                                    type: 'TEXT_DETECTION',
-                                    maxResults: 1
-                                }]
-                            }]
-                        })
-                    }
-                );
+                const response = await fetch(VISION_FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        image: base64Image
+                    })
+                });
                 
                 ocrStatus.style.display = 'none';
                 
-                if (visionResponse.ok) {
-                    const visionData = await visionResponse.json();
-                    const detectedText = visionData.responses[0]?.textAnnotations?.[0]?.description || '';
+                if (response.ok) {
+                    const data = await response.json();
+                    const detectedText = data.text || '';
                     
                     if (detectedText) {
                         processOCRResult(detectedText);
@@ -864,12 +853,12 @@
                         showResult(null, null);
                     }
                 } else {
-                    throw new Error('Vision API Fehler: ' + visionResponse.status);
+                    throw new Error('OCR Fehler: ' + response.status);
                 }
             } catch (error) {
                 ocrStatus.style.display = 'none';
                 showStatus('OCR Fehler: ' + error.message, 'error');
-                console.error('Vision API Error:', error);
+                console.error('OCR Error:', error);
                 // Zeige Dialog für manuelle Eingabe
                 showResult(null, null);
             }
