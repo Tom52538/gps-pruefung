@@ -655,10 +655,11 @@
         function generateCSV() {
             let csv = 'Modell,Seriennummer,Datum,Uhrzeit\n';
             devices.forEach(device => {
-                // Split timestamp into date and time
-                const parts = device.timestamp.split(' ');
+                // Remove comma from German timestamp format: "23.10.2025, 13:36:09" -> "23.10.2025 13:36:09"
+                const cleanTimestamp = device.timestamp.replace(',', '');
+                const parts = cleanTimestamp.split(' ').filter(p => p); // filter removes empty strings
                 const datum = parts[0]; // e.g. "23.10.2025"
-                const uhrzeit = parts[1]; // e.g. "11:24:49"
+                const uhrzeit = parts[1]; // e.g. "13:36:09"
                 csv += `${device.model},${device.serial},${datum},${uhrzeit}\n`;
             });
             return csv;
