@@ -268,7 +268,24 @@
             border: 3px solid #f97316;
             border-radius: 15px;
             padding: 25px;
-            margin: 20px 0;
+            margin: 20px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            max-width: 90%;
+            width: 400px;
+        }
+        
+        .result-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1999;
         }
         
         .result-title {
@@ -291,13 +308,29 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            margin-bottom: 5px;
         }
         
-        .result-value {
-            font-size: 1.8em;
+        .result-input {
+            width: 100%;
+            font-size: 1.5em;
             font-weight: bold;
             color: #667eea;
-            margin-top: 5px;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            text-align: center;
+            font-family: inherit;
+        }
+        
+        .result-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .result-input.empty {
+            border-color: #ef4444;
+            background: #fee2e2;
         }
         
         .result-actions {
@@ -308,6 +341,14 @@
         
         .result-actions button {
             flex: 1;
+        }
+        
+        .edit-hint {
+            font-size: 0.85em;
+            color: #666;
+            text-align: center;
+            margin-top: 10px;
+            font-style: italic;
         }
         
         .google-status {
@@ -414,20 +455,22 @@
         </div>
         
         <!-- Result View -->
+        <div id="resultOverlay" class="result-overlay" style="display: none;"></div>
         <div id="resultView" style="display: none;">
             <div class="result-box">
-                <div class="result-title">✅ Erkannt:</div>
+                <div class="result-title">✅ Erkannt - Bearbeiten möglich</div>
                 <div class="result-item">
                     <div class="result-label">MODELL</div>
-                    <div class="result-value" id="resultModel">-</div>
+                    <input type="text" id="resultModel" class="result-input" placeholder="z.B. TU600-25">
                 </div>
                 <div class="result-item">
-                    <div class="result-label">S/N</div>
-                    <div class="result-value" id="resultSerial">-</div>
+                    <div class="result-label">SERIENNUMMER</div>
+                    <input type="text" id="resultSerial" class="result-input" placeholder="z.B. 5177059">
                 </div>
+                <div class="edit-hint">💡 Werte können bearbeitet werden</div>
                 <div class="result-actions">
-                    <button id="closeResult" class="btn btn-secondary">Schließen</button>
-                    <button id="acceptResult" class="btn btn-primary">✓ OK</button>
+                    <button id="closeResult" class="btn btn-secondary">Abbrechen</button>
+                    <button id="acceptResult" class="btn btn-primary">✓ Speichern</button>
                 </div>
             </div>
         </div>
@@ -702,55 +745,108 @@
         function processOCRResult(text) {
             console.log('OCR Text:', text);
             
-            // Extract model (ME501-4, ME601-5, etc.)
-            const modelMatch = text.match(/ME\s*(\d{3})\s*-?\s*(\d)/i);
-            const model = modelMatch ? `ME${modelMatch[1]}-${modelMatch[2]}` : null;
+            // Extract model - flexibel für alle Formate nach "Model:"
+            // Sucht nach: Model: [BUCHSTABEN][ZAHLEN]-[ZAHLEN]
+            // Beispiele: ME501-4, TU600-25, GO700-10, etc.
+            let model = null;
             
-            // Extract serial number (6 digits)
-            const serialMatch = text.match(/\b(\d{6})\b/);
-            const serial = serialMatch ? serialMatch[1] : null;
-            
-            if (model || serial) {
-                currentScan = { model, serial };
-                showResult(model, serial);
-            } else {
-                showStatus('❌ Kein Modell oder S/N erkannt. Bitte erneut versuchen.', 'error');
+            // Variante 1: Suche nach "Model:" gefolgt von Modellnummer
+            const modelAfterLabel = text.match(/Model[:\s]+([A-Z]{2}\d{3}-\d{1,2})/i);
+            if (modelAfterLabel) {
+                model = modelAfterLabel[1].toUpperCase();
             }
+            
+            // Variante 2: Direkte Suche nach Modellmuster (falls "Model:" nicht erkannt)
+            if (!model) {
+                const modelDirect = text.match(/\b([A-Z]{2}\d{3}-\d{1,2})\b/i);
+                if (modelDirect) {
+                    model = modelDirect[1].toUpperCase();
+                }
+            }
+            
+            // Extract serial number - flexibel für verschiedene Längen
+            // Sucht nach: S/N: [6-7 Zahlen] oder direkt nach mehreren Zahlen
+            let serial = null;
+            
+            // Variante 1: Suche nach "S/N:" oder "S.N:" gefolgt von Zahlen
+            const serialAfterLabel = text.match(/S[\/\.\s]*N[:\s]+(\d{6,7})/i);
+            if (serialAfterLabel) {
+                serial = serialAfterLabel[1];
+            }
+            
+            // Variante 2: Suche nach 6-7 aufeinanderfolgenden Zahlen
+            if (!serial) {
+                const serialDirect = text.match(/\b(\d{6,7})\b/);
+                if (serialDirect) {
+                    serial = serialDirect[1];
+                }
+            }
+            
+            // Zeige Ergebnis auch wenn nur eins gefunden wurde
+            currentScan = { model, serial };
+            showResult(model, serial);
         }
         
         function showResult(model, serial) {
-            document.getElementById('resultModel').textContent = model || '-';
-            document.getElementById('resultSerial').textContent = serial || '-';
+            document.getElementById('resultModel').value = model || '';
+            document.getElementById('resultSerial').value = serial || '';
+            document.getElementById('resultOverlay').style.display = 'block';
             document.getElementById('resultView').style.display = 'block';
         }
         
         document.getElementById('closeResult').addEventListener('click', () => {
+            document.getElementById('resultOverlay').style.display = 'none';
+            document.getElementById('resultView').style.display = 'none';
+            currentScan = { model: null, serial: null };
+        });
+        
+        document.getElementById('resultOverlay').addEventListener('click', () => {
+            document.getElementById('resultOverlay').style.display = 'none';
             document.getElementById('resultView').style.display = 'none';
             currentScan = { model: null, serial: null };
         });
         
         document.getElementById('acceptResult').addEventListener('click', async () => {
-            if (currentScan.model && currentScan.serial) {
-                const device = {
-                    model: currentScan.model,
-                    serial: currentScan.serial,
-                    timestamp: new Date().toLocaleString('de-DE')
-                };
+            // Hole die Werte aus den Input-Feldern (können manuell bearbeitet sein)
+            const model = document.getElementById('resultModel').value.trim();
+            const serial = document.getElementById('resultSerial').value.trim();
+            
+            if (!model || !serial) {
+                showStatus('❌ Bitte Modell und Seriennummer eingeben!', 'error');
                 
-                devices.push(device);
-                localStorage.setItem('gpsDevices', JSON.stringify(devices));
-                updateUI();
+                // Markiere leere Felder
+                if (!model) document.getElementById('resultModel').classList.add('empty');
+                if (!serial) document.getElementById('resultSerial').classList.add('empty');
                 
-                document.getElementById('resultView').style.display = 'none';
-                showStatus('✅ Erfolgreich!', 'success');
+                // Entferne Markierung nach 2 Sekunden
+                setTimeout(() => {
+                    document.getElementById('resultModel').classList.remove('empty');
+                    document.getElementById('resultSerial').classList.remove('empty');
+                }, 2000);
                 
-                // Auto-upload to Google Drive if connected
-                if (accessToken) {
-                    await uploadToGoogleDrive();
-                }
-                
-                currentScan = { model: null, serial: null };
+                return;
             }
+            
+            const device = {
+                model: model.toUpperCase(),
+                serial: serial,
+                timestamp: new Date().toLocaleString('de-DE')
+            };
+            
+            devices.push(device);
+            localStorage.setItem('gpsDevices', JSON.stringify(devices));
+            updateUI();
+            
+            document.getElementById('resultOverlay').style.display = 'none';
+            document.getElementById('resultView').style.display = 'none';
+            showStatus('✅ Erfolgreich gespeichert!', 'success');
+            
+            // Auto-upload to Google Drive if connected
+            if (accessToken) {
+                await uploadToGoogleDrive();
+            }
+            
+            currentScan = { model: null, serial: null };
         });
         
         // Download CSV
