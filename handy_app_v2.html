@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📷 GPS Erfassung</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 12px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 1.6em;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 0.85em;
+        }
+        
+        .content {
+            padding: 20px;
+        }
+        
+        button {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 8px;
+            width: 100%;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .btn-camera {
+            background: #ff9800;
+            color: white;
+            font-size: 1.1em;
+        }
+        
+        .btn-camera:hover {
+            background: #f57c00;
+        }
+        
+        .btn-camera.active {
+            background: #d32f2f;
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            display: inline-block;
+            width: auto;
+            padding: 10px 14px;
+            font-size: 0.9em;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #ee5a52;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            text-align: center;
+        }
+        
+        .stat-box h3 {
+            font-size: 2.2em;
+            color: #667eea;
+            margin-bottom: 3px;
+        }
+        
+        .stat-box p {
+            color: #666;
+            font-size: 0.85em;
+        }
+        
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease-out;
+            font-size: 0.9em;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #f5c6cb;
+        }
+        
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #bee5eb;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-content h2 {
+            margin-bottom: 12px;
+            color: #333;
+            font-size: 1.2em;
+        }
+        
+        video {
+            width: 100%;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: none;
+            background: #000;
+        }
+        
+        .scan-result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #ff9800;
+        }
+        
+        .result-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+        }
+        
+        .result-label {
+            font-size: 0.8em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .result-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+            margin-top: 4px;
+            font-family: monospace;
+        }
+        
+        #ocrStatus {
+            font-size: 0.85em;
+            color: #666;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .modal-buttons button {
+            flex: 1;
+            min-width: 80px;
+            margin: 0;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 30px 20px;
+            color: #999;
+            font-size: 0.95em;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        
+        thead {
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        th {
+            padding: 8px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        code {
+            background: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-family: monospace;
+        }
+        
+        .section h2 {
+            font-size: 1em;
+            margin-bottom: 12px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 6px;
+        }
+        
+        .section {
+            margin-bottom: 20px;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📷 GPS Erfassung</h1>
+            <p>Handy-App | Kamera + OCR</p>
+        </div>
+        
+        <div class="content">
+            <div id="messages"></div>
+            
+            <div class="section">
+                <h2>📸 Scannen</h2>
+                <button class="btn-camera" id="cameraBtn" onclick="app.toggleCamera()">
+                    📷 Kamera starten
+                </button>
+                
+                <div class="btn-group" style="margin-top: 10px;">
+                    <button class="btn-secondary" onclick="app.downloadCSV()">⬇️ CSV</button>
+                    <button class="btn-secondary" onclick="app.clearAll()">🗑️ Löschen</button>
+                </div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-box">
+                    <h3 id="statTotal">0</h3>
+                    <p>Erfasst</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="statComplete" style="color: #ff9800;">0</h3>
+                    <p>Komplett</p>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>📊 Geräte</h2>
+                <div id="tableContainer"></div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            ✅ Kamera-OCR | ⏳ Google Drive Upload (wird noch hinzugefügt)
+        </div>
+    </div>
+
+    <!-- Camera Modal -->
+    <div id="cameraModal" class="modal">
+        <div class="modal-content">
+            <h2>📷 Typenschild fotografieren</h2>
+            <p style="margin-bottom: 10px; color: #666; font-size: 0.9em;">
+                Zentriere das Typenschild. System erkennt automatisch Model + S/N.
+            </p>
+            
+            <video id="cameraPreview" playsinline autoplay></video>
+            <div id="ocrStatus"></div>
+            
+            <button class="btn-camera" id="captureBtn" onclick="app.capturePhoto()">
+                📸 Foto machen
+            </button>
+            
+            <div id="scanResults"></div>
+            
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="app.closeCamera()">Schließen</button>
+                <button class="btn-primary" id="acceptBtn" onclick="app.acceptScanResults()" style="display:none;">
+                    ✓ OK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const app = {
+            devices: [],
+            cameraActive: false,
+            videoStream: null,
+            scannedData: null,
+            
+            init() {
+                this.loadFromStorage();
+                this.render();
+                console.log('✅ App ready');
+            },
+            
+            async toggleCamera() {
+                if (this.cameraActive) {
+                    this.closeCamera();
+                } else {
+                    this.openCamera();
+                }
+            },
+            
+            async openCamera() {
+                const modal = document.getElementById('cameraModal');
+                const video = document.getElementById('cameraPreview');
+                const btn = document.getElementById('cameraBtn');
+                
+                try {
+                    this.videoStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment' }
+                    });
+                    
+                    video.srcObject = this.videoStream;
+                    video.style.display = 'block';
+                    
+                    modal.classList.add('active');
+                    btn.classList.add('active');
+                    btn.textContent = '📷 Aktiv';
+                    this.cameraActive = true;
+                    
+                    this.showMessage('✅ Kamera an', 'info');
+                    
+                } catch (error) {
+                    this.showMessage('❌ Kamera nicht verfügbar', 'error');
+                    console.error('Camera error:', error);
+                }
+            },
+            
+            closeCamera() {
+                const modal = document.getElementById('cameraModal');
+                const video = document.getElementById('cameraPreview');
+                const btn = document.getElementById('cameraBtn');
+                
+                if (this.videoStream) {
+                    this.videoStream.getTracks().forEach(track => track.stop());
+                    this.videoStream = null;
+                }
+                
+                video.style.display = 'none';
+                modal.classList.remove('active');
+                btn.classList.remove('active');
+                btn.textContent = '📷 Kamera starten';
+                this.cameraActive = false;
+                
+                document.getElementById('scanResults').innerHTML = '';
+                document.getElementById('acceptBtn').style.display = 'none';
+                document.getElementById('ocrStatus').innerHTML = '';
+                this.scannedData = null;
+            },
+            
+            async capturePhoto() {
+                const video = document.getElementById('cameraPreview');
+                const canvas = document.createElement('canvas');
+                
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+                
+                const imageData = canvas.toDataURL('image/jpeg');
+                this.performOCR(imageData);
+            },
+            
+            async performOCR(imageData) {
+                const statusDiv = document.getElementById('ocrStatus');
+                const resultsDiv = document.getElementById('scanResults');
+                const acceptBtn = document.getElementById('acceptBtn');
+                
+                statusDiv.innerHTML = '⏳ OCR läuft...';
+                resultsDiv.innerHTML = '';
+                acceptBtn.style.display = 'none';
+                
+                try {
+                    const { data: { text } } = await Tesseract.recognize(imageData, 'deu+eng');
+                    
+                    const extracted = this.extractDeviceData(text);
+                    
+                    if (!extracted.model && !extracted.serialNumber) {
+                        statusDiv.innerHTML = '⚠️ Keine Model/S/N erkannt';
+                        statusDiv.style.color = '#f57c00';
+                        return;
+                    }
+                    
+                    this.scannedData = extracted;
+                    
+                    let html = '<div class="scan-result"><h3>✅ Erkannt:</h3>';
+                    
+                    if (extracted.model) {
+                        html += '<div class="result-item"><div class="result-label">Modell</div><div class="result-value">' + extracted.model + '</div></div>';
+                    }
+                    
+                    if (extracted.serialNumber) {
+                        html += '<div class="result-item"><div class="result-label">S/N</div><div class="result-value">' + extracted.serialNumber + '</div></div>';
+                    }
+                    
+                    html += '</div>';
+                    
+                    resultsDiv.innerHTML = html;
+                    statusDiv.innerHTML = '✅ Erfolgreich!';
+                    statusDiv.style.color = '#4caf50';
+                    
+                    acceptBtn.style.display = 'block';
+                    
+                } catch (error) {
+                    statusDiv.innerHTML = '❌ Fehler: ' + error.message;
+                    statusDiv.style.color = '#d32f2f';
+                }
+            },
+            
+            extractDeviceData(text) {
+                text = text.replace(/\s+/g, ' ');
+                
+                let model = null;
+                let serialNumber = null;
+                
+                const modelMatch = text.match(/ME\d{3}-\d/i);
+                if (modelMatch) {
+                    model = modelMatch[0].toUpperCase();
+                }
+                
+                const snMatch = text.match(/(?:S[\s/]*N[:\s]*)?(\d{6})/i);
+                if (snMatch) {
+                    serialNumber = snMatch[1];
+                }
+                
+                return { model, serialNumber };
+            },
+            
+            acceptScanResults() {
+                if (!this.scannedData || (!this.scannedData.model && !this.scannedData.serialNumber)) {
+                    this.showMessage('❌ Keine Daten', 'error');
+                    return;
+                }
+                
+                const device = {
+                    id: Date.now(),
+                    model: this.scannedData.model || '?',
+                    serialNumber: this.scannedData.serialNumber || '?',
+                    scannedAt: new Date().toISOString()
+                };
+                
+                if (this.devices.find(d => d.serialNumber === device.serialNumber)) {
+                    this.showMessage('⚠️ Schon erfasst', 'info');
+                    return;
+                }
+                
+                this.devices.push(device);
+                this.saveToStorage();
+                this.render();
+                this.closeCamera();
+                
+                this.showMessage(`✅ ${device.model} (${device.serialNumber})`, 'success');
+            },
+            
+            showMessage(text, type = 'info') {
+                const container = document.getElementById('messages');
+                const msg = document.createElement('div');
+                msg.className = 'message ' + type;
+                msg.textContent = text;
+                container.appendChild(msg);
+                
+                setTimeout(() => msg.remove(), 3000);
+            },
+            
+            downloadCSV() {
+                if (this.devices.length === 0) {
+                    this.showMessage('❌ Keine Geräte', 'error');
+                    return;
+                }
+                
+                const headers = ['Model', 'SerialNumber', 'ScannedAt'];
+                const rows = this.devices.map(d => [
+                    d.model,
+                    d.serialNumber,
+                    new Date(d.scannedAt).toLocaleString('de-DE')
+                ]);
+                
+                const csv = [headers, ...rows]
+                    .map(row => row.map(cell => '"' + cell + '"').join(','))
+                    .join('\n');
+                
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'gps-geraete.csv';
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                this.showMessage('✅ CSV heruntergeladen', 'success');
+            },
+            
+            clearAll() {
+                if (confirm('🗑️ Alle löschen?')) {
+                    this.devices = [];
+                    this.saveToStorage();
+                    this.render();
+                    this.showMessage('✅ Gelöscht', 'success');
+                }
+            },
+            
+            saveToStorage() {
+                localStorage.setItem('gpsDevices', JSON.stringify(this.devices));
+            },
+            
+            loadFromStorage() {
+                const stored = localStorage.getItem('gpsDevices');
+                this.devices = stored ? JSON.parse(stored) : [];
+            },
+            
+            render() {
+                const total = this.devices.length;
+                const complete = this.devices.filter(
+                    d => d.model !== '?' && d.serialNumber !== '?'
+                ).length;
+                
+                document.getElementById('statTotal').textContent = total;
+                document.getElementById('statComplete').textContent = complete;
+                
+                const container = document.getElementById('tableContainer');
+                
+                if (this.devices.length === 0) {
+                    container.innerHTML = '<div class="empty-state">📭 Noch keine Geräte</div>';
+                    return;
+                }
+                
+                let html = '<table><thead><tr><th>#</th><th>Modell</th><th>S/N</th><th>Zeit</th></tr></thead><tbody>';
+                
+                this.devices.slice().reverse().forEach((d, idx) => {
+                    html += '<tr><td><strong>' + (this.devices.length - idx) + '</strong></td><td><code>' + d.model + '</code></td><td><code>' + d.serialNumber + '</code></td><td style="font-size:0.8em;color:#999;">' + new Date(d.scannedAt).toLocaleTimeString('de-DE') + '</td></tr>';
+                });
+                
+                html += '</tbody></table>';
+                
+                container.innerHTML = html;
+            }
+        };
+        
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
