@@ -509,7 +509,7 @@
         const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
         
         // Google Vision API Configuration
-        const VISION_API_KEY = 'AIzaSyCqZyQ8VfbvbpO9VcKbyl4XFVgH8CZmQLo'; // Muss in Google Cloud Console erstellt werden
+        const VISION_API_KEY = 'YOUR_VISION_API_KEY_HERE'; // Muss in Google Cloud Console erstellt werden
         
         let tokenClient;
         let accessToken = null;
@@ -657,12 +657,21 @@
                     );
                 }
                 
-                // Prepare data for Sheet
+                // Prepare data for Sheet - Remove duplicates based on model + serial number combination
                 const values = [
                     ['Modell', 'Seriennummer', 'Datum', 'Uhrzeit']
                 ];
                 
+                // Dedupliziere basierend auf Modell + Seriennummer (behalte neuesten Eintrag)
+                const uniqueDevices = {};
                 devices.forEach(device => {
+                    // Verwende Kombination aus Modell + Seriennummer als Key
+                    const key = `${device.model}_${device.serial}`;
+                    uniqueDevices[key] = device;
+                });
+                
+                // Konvertiere zurück zu Array
+                Object.values(uniqueDevices).forEach(device => {
                     const cleanTimestamp = device.timestamp.replace(',', '');
                     const parts = cleanTimestamp.split(' ').filter(p => p);
                     const datum = parts[0];
