@@ -17,65 +17,63 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 0;
+            margin: 0;
         }
         
         .container {
             max-width: 800px;
             margin: 0 auto;
             background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            min-height: 100vh;
+            position: relative;
         }
         
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
         }
         
         .header h1 {
-            font-size: 2em;
-            color: #333;
-            margin-bottom: 10px;
+            font-size: 1.8em;
+            margin: 0 0 5px 0;
         }
         
         .header p {
-            color: #666;
-            font-size: 1.1em;
+            font-size: 0.9em;
+            margin: 0;
+            opacity: 0.9;
         }
         
         .section {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 20px;
-            border: 2px solid #e9ecef;
+            padding: 15px;
         }
         
         .section-title {
-            font-size: 1.3em;
+            font-size: 1.1em;
             font-weight: 600;
             color: #333;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
         
         .btn {
             width: 100%;
-            padding: 18px;
-            font-size: 1.2em;
+            padding: 15px;
+            font-size: 1.1em;
             font-weight: 600;
             border: none;
-            border-radius: 12px;
+            border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
         }
         
         .btn-primary {
@@ -83,19 +81,18 @@
             color: white;
         }
         
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(249, 115, 22, 0.4);
+        .btn-primary:active {
+            transform: scale(0.98);
         }
         
         .btn-secondary {
             background: #e9ecef;
             color: #495057;
-            font-size: 1em;
+            font-size: 0.95em;
             padding: 12px;
         }
         
-        .btn-secondary:hover {
+        .btn-secondary:active {
             background: #dee2e6;
         }
         
@@ -107,7 +104,7 @@
         .button-group {
             display: flex;
             gap: 10px;
-            margin-top: 15px;
+            margin-top: 10px;
         }
         
         .button-group .btn-secondary {
@@ -116,22 +113,21 @@
         
         .stats {
             display: flex;
-            gap: 20px;
-            justify-content: space-around;
-            margin-top: 20px;
+            gap: 10px;
+            margin-top: 15px;
         }
         
         .stat-box {
             flex: 1;
             background: white;
-            padding: 20px;
-            border-radius: 12px;
+            padding: 15px;
+            border-radius: 10px;
             text-align: center;
             border: 2px solid #e9ecef;
         }
         
         .stat-number {
-            font-size: 2.5em;
+            font-size: 2em;
             font-weight: bold;
             color: #667eea;
         }
@@ -142,7 +138,7 @@
         
         .stat-label {
             color: #666;
-            font-size: 0.9em;
+            font-size: 0.85em;
             margin-top: 5px;
         }
         
@@ -178,8 +174,8 @@
         
         #video {
             width: 100%;
-            border-radius: 12px;
-            margin-bottom: 15px;
+            height: 100%;
+            object-fit: cover;
         }
         
         #canvas {
@@ -192,6 +188,54 @@
         
         .camera-view.active {
             display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: black;
+            z-index: 1000;
+        }
+        
+        .camera-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            z-index: 1001;
+        }
+        
+        .camera-info {
+            position: fixed;
+            bottom: 180px;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            color: white;
+            z-index: 1001;
+        }
+        
+        .camera-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 10px;
+        }
+        
+        .camera-stat {
+            text-align: center;
+        }
+        
+        .camera-stat-number {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+        
+        .camera-stat-label {
+            font-size: 0.8em;
+            opacity: 0.8;
         }
         
         .status {
@@ -269,25 +313,28 @@
         .google-status {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 15px;
+            gap: 8px;
+            padding: 8px 15px;
             background: white;
-            border-radius: 10px;
-            margin-top: 15px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            margin-bottom: 10px;
         }
         
         .google-status.connected {
-            border: 2px solid #10b981;
+            background: #d1fae5;
             color: #065f46;
         }
         
         .google-status.disconnected {
-            border: 2px solid #ef4444;
+            background: #fee2e2;
             color: #991b1b;
         }
         
         #googleLoginBtn {
             display: none;
+            padding: 12px;
+            font-size: 1em;
         }
         
         .icon {
@@ -302,15 +349,14 @@
             <p>Handy-App | Kamera + OCR</p>
         </div>
         
-        <!-- Google Drive Status -->
+        <!-- Google Drive Status - Kompakt -->
         <div class="section">
-            <div class="section-title">🔐 Google Drive</div>
             <div id="googleStatus" class="google-status disconnected">
                 <span>❌</span>
-                <span>Nicht verbunden</span>
+                <span>Nicht mit Google Drive verbunden</span>
             </div>
-            <button id="googleLoginBtn" class="btn btn-primary" style="display: block; margin-top: 15px;">
-                Mit Google anmelden
+            <button id="googleLoginBtn" class="btn btn-primary" style="display: block;">
+                🔐 Mit Google anmelden
             </button>
         </div>
         
@@ -320,11 +366,6 @@
             <button id="startCamera" class="btn btn-primary">
                 📷 Kamera starten
             </button>
-            
-            <div class="button-group">
-                <button id="downloadCSV" class="btn btn-secondary">💾 CSV</button>
-                <button id="clearData" class="btn btn-secondary">🗑️ Löschen</button>
-            </div>
             
             <div class="stats">
                 <div class="stat-box">
@@ -336,16 +377,39 @@
                     <div class="stat-label">Komplett</div>
                 </div>
             </div>
+            
+            <div class="button-group">
+                <button id="downloadCSV" class="btn btn-secondary">💾 CSV</button>
+                <button id="clearData" class="btn btn-secondary">🗑️ Löschen</button>
+            </div>
         </div>
         
-        <!-- Camera View -->
+        <!-- Camera View - Fullscreen -->
         <div class="camera-view" id="cameraView">
             <video id="video" autoplay playsinline></video>
             <canvas id="canvas"></canvas>
-            <button id="captureBtn" class="btn btn-primary">📸 Foto machen</button>
-            <button id="stopCamera" class="btn btn-secondary" style="margin-top: 10px;">❌ Abbrechen</button>
-            <div id="ocrStatus" class="status info" style="display: none;">
-                🔍 Erkenne Text...
+            
+            <!-- Camera Info Overlay -->
+            <div class="camera-info">
+                <div class="camera-stats">
+                    <div class="camera-stat">
+                        <div class="camera-stat-number" id="cameraScannedCount">0</div>
+                        <div class="camera-stat-label">Erfasst</div>
+                    </div>
+                    <div class="camera-stat">
+                        <div class="camera-stat-number" id="cameraCompleteCount">0</div>
+                        <div class="camera-stat-label">Komplett</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Camera Controls -->
+            <div class="camera-controls">
+                <button id="captureBtn" class="btn btn-primary">📸 Foto machen</button>
+                <button id="stopCamera" class="btn btn-secondary" style="margin-top: 10px;">❌ Abbrechen</button>
+                <div id="ocrStatus" class="status info" style="display: none; margin-top: 10px;">
+                    🔍 Erkenne Text...
+                </div>
             </div>
         </div>
         
@@ -386,13 +450,6 @@
                 <tbody id="deviceList">
                 </tbody>
             </table>
-        </div>
-        
-        <div class="google-status connected" style="margin-top: 20px;">
-            <span>✅</span>
-            <span>Kamera-OCR</span>
-            <span style="margin-left: auto;">🏆</span>
-            <span id="driveUploadStatus">Google Drive Upload (nicht verbunden)</span>
         </div>
     </div>
 
@@ -465,19 +522,16 @@
         
         function updateGoogleStatus(connected) {
             const statusEl = document.getElementById('googleStatus');
-            const uploadStatusEl = document.getElementById('driveUploadStatus');
             const loginBtn = document.getElementById('googleLoginBtn');
             
             if (connected) {
                 statusEl.className = 'google-status connected';
-                statusEl.innerHTML = '<span>✅</span><span>Verbunden mit Google Drive</span>';
+                statusEl.innerHTML = '<span>✅</span><span>Mit Google Drive verbunden</span>';
                 loginBtn.style.display = 'none';
-                uploadStatusEl.textContent = 'Google Drive Upload (aktiv)';
             } else {
                 statusEl.className = 'google-status disconnected';
-                statusEl.innerHTML = '<span>❌</span><span>Nicht verbunden</span>';
+                statusEl.innerHTML = '<span>❌</span><span>Nicht mit Google Drive verbunden</span>';
                 loginBtn.style.display = 'block';
-                uploadStatusEl.textContent = 'Google Drive Upload (nicht verbunden)';
             }
         }
         
@@ -723,10 +777,15 @@
         
         // Update UI
         function updateUI() {
-            document.getElementById('scannedCount').textContent = devices.length;
+            const count = devices.length;
+            const completeCount = devices.filter(d => d.model && d.serial).length;
             
-            const completeDevices = devices.filter(d => d.model && d.serial);
-            document.getElementById('completeCount').textContent = completeDevices.length;
+            document.getElementById('scannedCount').textContent = count;
+            document.getElementById('completeCount').textContent = completeCount;
+            
+            // Update camera overlay counters if visible
+            document.getElementById('cameraScannedCount').textContent = count;
+            document.getElementById('cameraCompleteCount').textContent = completeCount;
             
             const tbody = document.getElementById('deviceList');
             tbody.innerHTML = '';
@@ -737,7 +796,7 @@
                     <td>${index + 1}</td>
                     <td>${device.model}</td>
                     <td>${device.serial}</td>
-                    <td>${device.timestamp}</td>
+                    <td>${device.timestamp.split(' ')[1]}</td>
                 `;
                 tbody.appendChild(tr);
             });
