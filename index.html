@@ -500,8 +500,11 @@
         // Google Drive Configuration
         const GOOGLE_CLIENT_ID = '274960914579-6l9da1vd5vu42p729kkv5m57oh98t0lc.apps.googleusercontent.com';
         const GOOGLE_FOLDER_ID = '1SU7nYBYDFgbqzsJqHQZ3Quz-cd38MQ3Q';
-        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
-        const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+        const DISCOVERY_DOCS = [
+            'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
+            'https://sheets.googleapis.com/$discovery/rest?version=v4'
+        ];
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
         
         let tokenClient;
         let accessToken = null;
@@ -520,7 +523,7 @@
         
         async function initializeGapiClient() {
             await gapi.client.init({
-                discoveryDocs: [DISCOVERY_DOC],
+                discoveryDocs: DISCOVERY_DOCS,
             });
             gapiInited = true;
             maybeEnableButtons();
@@ -578,7 +581,7 @@
             }
         }
         
-        // Upload to Google Drive
+        // Upload to Google Drive as Google Sheet
         async function uploadToGoogleDrive() {
             if (!accessToken) {
                 showStatus('Bitte erst mit Google anmelden!', 'error');
@@ -586,12 +589,11 @@
             }
             
             try {
-                const csvContent = generateCSV();
-                const fileName = `GPS_Scan_${new Date().toISOString().split('T')[0]}.csv`;
+                const fileName = `GPS_Scan_${new Date().toISOString().split('T')[0]}`;
                 
-                // Check if file already exists for today
+                // Check if Sheet already exists for today
                 const searchResponse = await fetch(
-                    `https://www.googleapis.com/drive/v3/files?q=name='${fileName}' and '${GOOGLE_FOLDER_ID}' in parents and trashed=false`,
+                    `https://www.googleapis.com/drive/v3/files?q=name='${fileName}' and mimeType='application/vnd.google-apps.spreadsheet' and '${GOOGLE_FOLDER_ID}' in parents and trashed=false`,
                     {
                         headers: {
                             'Authorization': 'Bearer ' + accessToken
@@ -600,49 +602,89 @@
                 );
                 
                 const searchData = await searchResponse.json();
-                let response;
+                let spreadsheetId;
                 
                 if (searchData.files && searchData.files.length > 0) {
-                    // File exists, update it
-                    const fileId = searchData.files[0].id;
-                    response = await fetch(
-                        `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+                    // Sheet exists, get its ID
+                    spreadsheetId = searchData.files[0].id;
+                    console.log('Sheet existiert bereits:', spreadsheetId);
+                } else {
+                    // Create new Sheet
+                    const createResponse = await fetch(
+                        'https://sheets.googleapis.com/v4/spreadsheets',
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer ' + accessToken,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                properties: {
+                                    title: fileName
+                                },
+                                sheets: [{
+                                    properties: {
+                                        title: 'GPS Geräte'
+                                    }
+                                }]
+                            })
+                        }
+                    );
+                    
+                    if (!createResponse.ok) {
+                        throw new Error('Sheet konnte nicht erstellt werden');
+                    }
+                    
+                    const createData = await createResponse.json();
+                    spreadsheetId = createData.spreadsheetId;
+                    console.log('Neues Sheet erstellt:', spreadsheetId);
+                    
+                    // Move to correct folder
+                    await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${spreadsheetId}?addParents=${GOOGLE_FOLDER_ID}`,
                         {
                             method: 'PATCH',
                             headers: {
-                                'Authorization': 'Bearer ' + accessToken,
-                                'Content-Type': 'text/csv'
-                            },
-                            body: csvContent
+                                'Authorization': 'Bearer ' + accessToken
+                            }
                         }
                     );
-                } else {
-                    // File doesn't exist, create new
-                    const metadata = {
-                        name: fileName,
-                        mimeType: 'text/csv',
-                        parents: [GOOGLE_FOLDER_ID]
-                    };
-                    
-                    const form = new FormData();
-                    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-                    form.append('file', new Blob([csvContent], { type: 'text/csv' }));
-                    
-                    response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': 'Bearer ' + accessToken
-                        },
-                        body: form
-                    });
                 }
                 
-                if (response.ok) {
-                    showStatus('✅ In Google Drive hochgeladen!', 'success');
+                // Prepare data for Sheet
+                const values = [
+                    ['Modell', 'Seriennummer', 'Datum', 'Uhrzeit']
+                ];
+                
+                devices.forEach(device => {
+                    const cleanTimestamp = device.timestamp.replace(',', '');
+                    const parts = cleanTimestamp.split(' ').filter(p => p);
+                    const datum = parts[0];
+                    const uhrzeit = parts[1];
+                    values.push([device.model, device.serial, datum, uhrzeit]);
+                });
+                
+                // Update Sheet data
+                const updateResponse = await fetch(
+                    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/GPS Geräte!A1:D${values.length}?valueInputOption=RAW`,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': 'Bearer ' + accessToken,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            values: values
+                        })
+                    }
+                );
+                
+                if (updateResponse.ok) {
+                    showStatus('✅ In Google Sheets hochgeladen!', 'success');
                     return true;
                 } else {
-                    const error = await response.json();
-                    showStatus('Upload fehlgeschlagen: ' + (error.error?.message || 'Unbekannter Fehler'), 'error');
+                    const error = await updateResponse.json();
+                    showStatus('Update fehlgeschlagen: ' + (error.error?.message || 'Unbekannter Fehler'), 'error');
                     return false;
                 }
             } catch (error) {
